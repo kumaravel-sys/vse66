@@ -1,0 +1,171 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>School Stock Market</title>
+  <style>
+    body { font-family: Arial, sans-serif; background: #f4f4f4; text-align: center; padding: 20px; }
+    #loginDiv, #stockDiv, #adminDiv { max-width: 500px; margin: auto; padding: 20px; background: white; border-radius: 8px; }
+    input, button { padding: 8px; margin: 5px; width: 80%; }
+    canvas { margin-top: 20px; }
+  </style>
+</head>
+<body>
+  <h1>📈 School Stock Market</h1>
+
+  <!-- Login Form -->
+  <div id="loginDiv">
+    <h3>Login</h3>
+    <input type="email" id="email" placeholder="Email"><br>
+    <input type="password" id="password" placeholder="Password"><br>
+    <button onclick="login()">Login</button>
+  </div>
+
+  <!-- Stock Section (for students) -->
+  <div id="stockDiv" style="display:none;">
+    <h2>Welcome <span id="userEmail"></span>!</h2>
+    <h3>Your Stocks</h3>
+    <select id="stockSelect"></select>
+    <p>Price: ₹<span id="stockPrice"></span></p>
+    <button onclick="buyStock()">Buy</button>
+    <button onclick="sellStock()">Sell</button>
+    <button onclick="logout()">Logout</button>
+    <canvas id="chart" width="400" height="200"></canvas>
+  </div>
+
+  <!-- Admin Panel -->
+  <div id="adminDiv" style="display:none;">
+    <h2>👨‍💼 Admin Panel</h2>
+    <p>All Users & Holdings:</p>
+    <ul id="userList"></ul>
+    <button onclick="logout()">Logout</button>
+  </div>
+
+  <!-- Firebase Compat -->
+  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
+
+  <!-- Chart.js -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+  <script>
+    // -------- Firebase Setup --------
+    const firebaseConfig = {
+  apiKey: "AIzaSyDVPZUpZcPca-1kqY7TFbtmvZFJul8xgN4",
+  authDomain: "vse-b5487.firebaseapp.com",
+  projectId: "vse-b5487",
+  storageBucket: "vse-b5487.firebasestorage.app",
+  messagingSenderId: "82864098861",
+  appId: "1:82864098861:web:39406ef4a54634029b72a4"
+};
+
+    firebase.initializeApp(firebaseConfig);
+    const auth = firebase.auth();
+    const db = firebase.firestore();
+
+    // -------- Config --------
+    const FINNHUB_KEY = "d3bm7n1r01qqg7bv706gd3bm7n1r01qqg7bv7070";  // 👈 your key
+    const ADMIN_EMAIL = "admin6vse@email.com";   // 👈 your admin email
+
+    const STOCKS = [
+      const STOCKS = [
+      { symbol: "AAPL", name: "organising department" }, 
+      { symbol: "GOOGL", name: "models department" }, 
+      { symbol: "MSFT", name: "tech department" }, 
+      { symbol: "TSLA", name: "finance department" }, 
+      { symbol: "AMZN", name: "games department" }, 
+      { symbol: "META", name: "foodstalls department" }, 
+      { symbol: "NFLX", name: "stalls department" }, 
+      { symbol: "NVDA", name: "seminar department" }, 
+      { symbol: "JPM", name: "photography department" }
+    ];
+
+    let chart;
+
+    // -------- Auth --------
+    function login() {
+      const email = document.getElementById("email").value;
+      const password = document.getElementById("password").value;
+      auth.signInWithEmailAndPassword(email, password).catch(err => alert(err.message));
+    }
+
+    function logout() {
+      auth.signOut();
+    }
+
+    auth.onAuthStateChanged(user => {
+      if (user) {
+        if (user.email === ADMIN_EMAIL) {
+          document.getElementById("loginDiv").style.display = "none";
+          document.getElementById("adminDiv").style.display = "block";
+          loadUsers();
+        } else {
+          document.getElementById("loginDiv").style.display = "none";
+          document.getElementById("stockDiv").style.display = "block";
+          document.getElementById("userEmail").innerText = user.email;
+          loadStocks();
+        }
+      } else {
+        document.getElementById("loginDiv").style.display = "block";
+        document.getElementById("stockDiv").style.display = "none";
+        document.getElementById("adminDiv").style.display = "none";
+      }
+    });
+
+    // -------- Stocks --------
+    function loadStocks() {
+      const select = document.getElementById("stockSelect");
+      select.innerHTML = "";
+      STOCKS.forEach(s => {
+        const opt = document.createElement("option");
+        opt.value = s.symbol;
+        opt.innerText = s.name;
+        select.appendChild(opt);
+      });
+      updatePrice();
+    }
+
+    async function updatePrice() {
+      const symbol = document.getElementById("stockSelect").value;
+      const res = await fetch(`https://finnhub.io/api/v1/quote?symbol=${symbol}&token=${FINNHUB_KEY}`);
+      const data = await res.json();
+      document.getElementById("stockPrice").innerText = data.c;
+
+      // Chart (dummy historical for demo)
+      const ctx = document.getElementById("chart").getContext("2d");
+      if (chart) chart.destroy();
+      chart = new Chart(ctx, {
+        type: "line",
+        data: {
+          labels: ["Mon","Tue","Wed","Thu","Fri"],
+          datasets: [{ label: symbol, data: [data.c-5, data.c-3, data.c, data.c+2, data.c+1] }]
+        }
+      });
+    }
+    document.getElementById("stockSelect").addEventListener("change", updatePrice);
+
+    function buyStock() {
+      alert("Buy feature demo — would save to Firestore");
+    }
+    function sellStock() {
+      alert("Sell feature demo — would save to Firestore");
+    }
+
+    // -------- Admin --------
+    async function loadUsers() {
+      const list = document.getElementById("userList");
+      list.innerHTML = "<li>Loading...</li>";
+      // For now just list users collection if created
+      const snap = await db.collection("users").get();
+      list.innerHTML = "";
+      snap.forEach(doc => {
+        const li = document.createElement("li");
+        li.innerText = doc.id + " → " + JSON.stringify(doc.data());
+        list.appendChild(li);
+      });
+    }
+  </script>
+</body>
+</html>
